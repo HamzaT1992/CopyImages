@@ -1,14 +1,9 @@
 ﻿using NLog;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
 using System.IO;
-using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using Telerik.WinControls;
 
 namespace CopyFiles
 {
@@ -18,6 +13,7 @@ namespace CopyFiles
         string[] lines;
         int Length=0;
         private static Logger logger = LogManager.GetCurrentClassLogger();
+        List<FileInfo> allFiles = new List<FileInfo>();
         public RadForm1()
         {
             InitializeComponent();
@@ -34,16 +30,27 @@ namespace CopyFiles
                 //label5.Text = lines.Length.ToString();
                 foreach (var line in lines)
                 {
-                    FileAttributes attr = File.GetAttributes(line);
-                    if (attr.HasFlag(FileAttributes.Directory))
+                    try
                     {
-                        var dir = new DirectoryInfo(line);
-                        var files = dir.GetFiles("*.*", SearchOption.AllDirectories);
-                        Length += files.Length;
+                        FileAttributes attr = File.GetAttributes(line);
+                        if (attr.HasFlag(FileAttributes.Directory))
+                        {
+                            var dir = new DirectoryInfo(line);
+                            var files = dir.GetFiles("*.*", SearchOption.AllDirectories);
+                            allFiles.AddRange(files);
+                        }
+                        else
+                        {
+                            allFiles.Add(new FileInfo(line));
+                        }
+
                     }
-                    else
-                        Length++;
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show(ex.Message);
+                    }
                 }
+                Length = allFiles.Count;
                 copyProgressBar.Maximum = Length;
                 labelLines.Text = Length.ToString();
             }
@@ -108,34 +115,17 @@ namespace CopyFiles
         {
             int i = 0;
 
-            foreach (var line in lines)
+            foreach (var file in allFiles)
             {
                 try
                 {
-                    FileAttributes attr = File.GetAttributes(line);
-                    if (attr.HasFlag(FileAttributes.Directory))
-                    {
-                        var dir = new DirectoryInfo(line);
-                        var files = dir.GetFiles("*.*", SearchOption.AllDirectories);
-                        foreach (var file in files)
-                        {
-                            Cp(file);
-                            if (progress != null)
-                                progress.Report(++i);
-                        }
-                    }
-                    else
-                    {
-                        Cp(new FileInfo(line));
-                        if (progress != null)
-                            progress.Report(++i);
-                    }
-                    
-
+                    Cp(file);
+                    if (progress != null)
+                        progress.Report(++i);
                 }
                 catch (Exception ex)
                 {
-                    logger.Error(ex, line);
+                    logger.Error(ex, file.FullName);
                 }
 
 
